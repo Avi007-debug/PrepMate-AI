@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
 
     # LLM settings (generic)
-    LLM_MODEL: str = "gpt-4"
+    LLM_MODEL: str = "llama-3.1-70b-versatile"  # Default GROQ model
     LLM_TEMPERATURE: float = 0.7
     # When True, use deterministic local stubs instead of calling external LLMs
     MOCK_LLM: bool = False

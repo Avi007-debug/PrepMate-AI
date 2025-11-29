@@ -1,94 +1,115 @@
 # File: backend/chains/feedback_chain.py
+
 import os
 import json
-import asyncio
-from typing import Dict, Any
+from typing import Dict
 
-from langchain_openai import ChatOpenAI
-from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
+try:
+    from langchain_groq import ChatGroq
+    GROQ_AVAILABLE = True
+except ImportError:
+    from langchain_openai import ChatOpenAI
+    GROQ_AVAILABLE = False
+
+from langchain_core.prompts import PromptTemplate
+from langchain_core.runnables import RunnableSequence
 
 from config import settings
 
 
 class FeedbackChain:
     """
-    Evaluate an answer using LLM.
-    Exposes:
-      - async _evaluate_answer(question, answer): core async call
-      - evaluate_answer(question, answer): synchronous wrapper returning a dict with keys 'score' and 'feedback'
+    Evaluate candidate answers using modern LangChain LCEL.
+    Uses RunnableSequence instead of the removed LLMChain.
     """
 
     def __init__(self):
-        self.llm = ChatOpenAI(
-            model=settings.LLM_MODEL,
-            temperature=settings.LLM_TEMPERATURE,
-            openai_api_key=settings.OPENAI_API_KEY,
-        )
+        # Choose LLM provider
+        if GROQ_AVAILABLE and settings.GROQ_API_KEY:
+            self.llm = ChatGroq(
+                model=settings.LLM_MODEL,
+                groq_api_key=settings.GROQ_API_KEY,
+                temperature=settings.LLM_TEMPERATURE,
+            )
+        else:
+            self.llm = ChatOpenAI(
+                model=settings.LLM_MODEL,
+                api_key=settings.OPENAI_API_KEY,
+                temperature=settings.LLM_TEMPERATURE,
+            )
+
         self.prompt = self._load_prompt()
-        self.chain = LLMChain(llm=self.llm, prompt=self.prompt)
+
+        # LCEL chain
+        self.chain = RunnableSequence(self.prompt | self.llm)
 
     def _load_prompt(self) -> PromptTemplate:
+        """Load evaluation prompt."""
         prompt_path = os.path.join(os.path.dirname(__file__), "prompts", "feedback_prompt.txt")
-        try:
-            with open(prompt_path, "r", encoding="utf-8") as f:
-                template = f.read()
-        except FileNotFoundError:
-            # Instruct model to return strict JSON for easy parsing
+
+        if not os.path.exists(prompt_path):
             template = (
                 "You are an expert interviewer. Given the `question` and a candidate `answer`, "
                 "evaluate the answer and return a JSON object with exactly two fields:\n"
-                "  - score: integer between 1 and 5 (5 = excellent)\n"
-                "  - feedback: short constructive feedback (one or two sentences)\n\n"
-                "Return only the JSON object.\n\n"
+                "  - score: number from 0 to 10\n"
+                "  - feedback: detailed constructive explanation\n\n"
+                "Return ONLY valid JSON.\n\n"
                 "Question: {question}\n"
                 "Answer: {answer}\n\n"
                 "JSON:"
             )
+        else:
+            with open(prompt_path, "r", encoding="utf-8") as f:
+                template = f.read()
 
         return PromptTemplate(
-            input_variables=["question", "answer"],
             template=template,
+            input_variables=["question", "answer"],
         )
 
-    async def _evaluate_answer(self, question: str, answer: str) -> str:
-        result = await self.chain.arun(question=question, answer=answer)
-        return result.strip()
+    async def generate_feedback(self, question: str, answer: str) -> Dict[str, float]:
+        """
+        Generates feedback score + explanation.
+        Returns:
+            { "score": float, "feedback": str }
+        """
+        raw = await self.chain.ainvoke({"question": question, "answer": answer})
+        raw_text = raw.content.strip()
 
-    def evaluate_answer(self, question: str, answer: str) -> Dict[str, Any]:
-        """
-        Synchronous wrapper that returns a parsed dict: {'score': int, 'feedback': str, 'raw': str}
-        If JSON parsing fails, 'raw' will contain the model output and 'score' may be None.
-        """
-        raw = asyncio.run(self._evaluate_answer(question, answer))
-        parsed = {"score": None, "feedback": "", "raw": raw}
+        # Remove markdown code blocks
+        if raw_text.startswith("```"):
+            raw_text = raw_text.split("```")[1].strip()
+            raw_text = raw_text.replace("json", "").strip()
+
+        # Try JSON parsing
         try:
-            # Try to parse JSON directly
-            data = json.loads(raw)
-            if isinstance(data, dict):
-                parsed["score"] = int(data.get("score")) if data.get("score") is not None else None
-                parsed["feedback"] = str(data.get("feedback", "")).strip()
-                parsed["raw"] = raw
-                return parsed
+            data = json.loads(raw_text)
+
+            score = None
+            feedback = None
+
+            # score extraction patterns
+            if "score" in data:
+                score = float(data["score"])
+            elif "scores" in data and isinstance(data["scores"], dict):
+                score = float(data["scores"].get("overall", 5.0))
+
+            # feedback extraction
+            if "feedback" in data:
+                feedback = str(data["feedback"])
+            elif "detailed_feedback" in data:
+                feedback = str(data["detailed_feedback"])
+
+            return {
+                "score": score if score is not None else 5.0,
+                "feedback": feedback if feedback else raw_text,
+            }
+
         except Exception:
             pass
 
-        # Fallback: attempt to extract a numeric score like "score: 4" and the rest as feedback
-        try:
-            lower = raw.lower()
-            score = None
-            if "score" in lower:
-                # simple extraction
-                for token in raw.replace("\n", " ").split():
-                    if token.strip().rstrip(",.").isdigit():
-                        candidate = int(token.strip().rstrip(",."))
-                        if 1 <= candidate <= 5:
-                            score = candidate
-                            break
-            parsed["score"] = score
-            # use remainder as feedback
-            parsed["feedback"] = raw
-        except Exception:
-            parsed["feedback"] = raw
-
-        return parsed
+        # Fallback if JSON is malformed
+        return {
+            "score": 5.0,
+            "feedback": raw_text,
+        }
