@@ -111,3 +111,68 @@ async def delete_session(session_id: str):
         return {"message": "Session deleted successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Additional public endpoints (requested) ---
+
+
+@router.post("/interview/start", response_model=InterviewStartResponse)
+async def public_start_interview(request: InterviewStartRequest):
+    """Public POST /interview/start - start a new interview session"""
+    try:
+        result = await interview_manager.start_interview(
+            role=request.role,
+            difficulty=request.difficulty,
+            topics=request.topics,
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/interview/question")
+async def public_get_current_question(session_id: str):
+    """Public GET /interview/question?session_id=... - get the current question"""
+    try:
+        question = interview_manager.get_current_question(session_id)
+        if question is None:
+            raise HTTPException(status_code=404, detail="No current question found")
+        return question
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/interview/answer", response_model=FeedbackResponse)
+async def public_submit_answer(request: AnswerRequest):
+    """Public POST /interview/answer - submit an answer and receive feedback"""
+    try:
+        result = await interview_manager.submit_answer(
+            session_id=request.session_id,
+            question_id=request.question_id,
+            answer=request.answer,
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/interview/next")
+async def public_next_question(session_id: str):
+    """Public GET /interview/next?session_id=... - generate and return the next question"""
+    try:
+        next_q = await interview_manager.next_question(session_id)
+        return next_q
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/interview/summary")
+async def public_get_summary(session_id: str):
+    """Public GET /interview/summary?session_id=... - get the interview summary"""
+    try:
+        summary = await interview_manager.generate_summary(session_id)
+        return summary
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
