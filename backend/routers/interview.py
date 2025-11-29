@@ -54,7 +54,7 @@ async def start_interview(request: InterviewStartRequest):
 async def submit_answer(request: AnswerRequest):
     """Submit an answer and get feedback"""
     try:
-        result = await interview_manager.process_answer(
+        result = await interview_manager.submit_answer(
             session_id=request.session_id,
             question_id=request.question_id,
             answer=request.answer
@@ -68,7 +68,46 @@ async def submit_answer(request: AnswerRequest):
 async def get_summary(session_id: str):
     """Get interview summary"""
     try:
-        summary = await interview_manager.get_summary(session_id)
+        summary = await interview_manager.generate_summary(session_id)
         return summary
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/current/{session_id}")
+async def get_current_question(session_id: str):
+    """Get current question for a session"""
+    try:
+        question = interview_manager.get_current_question(session_id)
+        if question is None:
+            raise HTTPException(status_code=404, detail="No current question found")
+        return question
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/status/{session_id}")
+async def get_session_status(session_id: str):
+    """Get session status and progress"""
+    try:
+        state = interview_manager.get_session_state(session_id)
+        is_complete = interview_manager.is_complete(session_id)
+        return {
+            "session_id": session_id,
+            "state": state,
+            "is_complete": is_complete
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/session/{session_id}")
+async def delete_session(session_id: str):
+    """Delete a session"""
+    try:
+        deleted = interview_manager.delete_session(session_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Session not found")
+        return {"message": "Session deleted successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
