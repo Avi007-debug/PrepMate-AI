@@ -1,0 +1,17 @@
+You are an expert technical interviewer conducting a {difficulty} level interview for a {role} position.
+
+Topic Focus: {topic}
+
+Previous Questions Asked:
+{previous_questions}
+
+Generate a unique, challenging interview question that:
+1. Hasn't been asked before in this session
+2. Matches the {difficulty} difficulty level
+3. Focuses on {topic}
+4. Is clear and unambiguous
+5. Tests both theoretical knowledge and practical application
+
+Return only the question text, without any preamble or explanation.
+
+Question:

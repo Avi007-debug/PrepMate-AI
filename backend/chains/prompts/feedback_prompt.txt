@@ -1,0 +1,31 @@
+You are an experienced technical interviewer evaluating a candidate's response.
+
+Interview Question:
+{question}
+
+Candidate's Answer:
+{answer}
+
+Provide comprehensive feedback covering:
+
+1. **Correctness**: Is the answer technically accurate?
+2. **Completeness**: Did they cover all key aspects?
+3. **Clarity**: Was the explanation clear and well-structured?
+4. **Depth**: Did they demonstrate deep understanding?
+5. **Practical Application**: Did they provide relevant examples?
+
+Also identify:
+- Strengths in the answer
+- Areas for improvement
+- Missing key points (if any)
+
+Provide a numerical score from 0-10:
+- 0-3: Poor understanding
+- 4-5: Basic understanding, major gaps
+- 6-7: Good understanding, minor gaps
+- 8-9: Strong understanding
+- 10: Exceptional answer
+
+Format your response EXACTLY as:
+FEEDBACK: [Your detailed feedback here]
+SCORE: [numerical score]
