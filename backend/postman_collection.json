@@ -1,0 +1,147 @@
+{
+  "info": {
+    "_postman_id": "prepMate-ai-backend-collection",
+    "name": "PrepMate-AI Backend API",
+    "description": "Collection to test PrepMate-AI FastAPI backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000",
+      "type": "string"
+    },
+    {
+      "key": "session_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health - Root",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": ["/"]
+        }
+      }
+    },
+    {
+      "name": "Health - /health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": ["{{base_url}}"],
+          "path": ["health"]
+        }
+      }
+    },
+    {
+      "name": "Start Interview",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key":"Content-Type","value":"application/json"}
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"role\": \"Software Engineer\",\n  \"difficulty\": \"medium\",\n  \"topics\": [\"algorithms\", \"system design\"]\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/interview/start",
+          "host": ["{{base_url}}"],
+          "path": ["api","interview","start"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Save the returned session_id to an environment variable for later requests",
+              "if (pm.response.code === 200) {",
+              "  var data = pm.response.json();",
+              "  if (data.session_id) { pm.environment.set('session_id', data.session_id); }",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Get Current Question",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/interview/current/{{session_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api","interview","current","{{session_id}}"]
+        }
+      }
+    },
+    {
+      "name": "Submit Answer",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key":"Content-Type","value":"application/json"}
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"question_id\": 0,\n  \"answer\": \"My answer text...\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/interview/answer",
+          "host": ["{{base_url}}"],
+          "path": ["api","interview","answer"]
+        }
+      }
+    },
+    {
+      "name": "Get Status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/interview/status/{{session_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api","interview","status","{{session_id}}"]
+        }
+      }
+    },
+    {
+      "name": "Get Summary",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/interview/summary/{{session_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api","interview","summary","{{session_id}}"]
+        }
+      }
+    },
+    {
+      "name": "Delete Session",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/interview/session/{{session_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api","interview","session","{{session_id}}"]
+        }
+      }
+    }
+  ]
+}
