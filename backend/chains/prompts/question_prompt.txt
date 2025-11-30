@@ -11,29 +11,38 @@ Interview Question Types required:
 
 Input variables:
 - role (string) → e.g. "Amazon SDE2 DSA", "Google L3 Backend"
-- num_questions (int)
 - difficulty (string: easy, medium, hard, mixed)
+- topic (string) → specific topic focus
+- previous_questions (string) → previously asked questions to avoid duplicates
 
 Output format (STRICT JSON, no markdown, no comments):
 
-{
-  "role": "<role>",
-  "difficulty": "<difficulty>",
+{{
+  "role": "{role}",
+  "difficulty": "{difficulty}",
   "total_questions": <num_questions>,
   "questions": [
-    {
+    {{
       "id": 1,
       "question": "string",
       "category": "DSA | System Design | Behavioral | Core CS",
       "difficulty": "easy | medium | hard",
       "topic_tags": ["array", "sliding window"],
       "ideal_answer_brief": "2–4 sentence brief expectation of a strong answer."
-    }
+    }}
   ]
-}
+}}
 
 Requirements:
 - If difficulty = "mixed", include variety of easy/medium/hard questions.
 - Tailor content difficulty according to job level (SDE1 vs SDE2 vs Senior).
 - Behavioral questions must follow STAR interview format.
 - Output MUST be valid JSON with no extra text.
+
+Role: {role}
+Difficulty: {difficulty}
+Topic Focus: {topic}
+Previous Questions to Avoid:
+{previous_questions}
+
+Generate the interview question now:

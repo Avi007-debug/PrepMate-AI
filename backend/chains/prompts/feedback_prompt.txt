@@ -25,17 +25,17 @@ You MUST return STRICTLY VALID JSON. No extra text, no markdown, no comments.
 
 Use this EXACT JSON structure:
 
-{
-  "question": "<question>",
-  "candidate_answer": "<answer>",
-  "scores": {
+{{
+  "question": "{question}",
+  "candidate_answer": "{answer}",
+  "scores": {{
     "overall": <0-10>,
     "correctness": <0-10>,
     "completeness": <0-10>,
     "clarity": <0-10>,
     "depth": <0-10>,
     "practical_application": <0-10>
-  },
+  }},
   "verdict": "poor | basic | good | strong | exceptional",
   "strengths": [
     "strength 1",
@@ -54,7 +54,7 @@ Use this EXACT JSON structure:
     "follow-up question 1",
     "follow-up question 2"
   ]
-}
+}}
 
 Scoring guideline:
 - 0–3: Poor understanding
@@ -67,3 +67,8 @@ Rules:
 - Always return valid JSON that can be parsed.
 - Do not wrap the JSON in quotes or backticks.
 - Do not add any text outside the JSON.
+
+Question: {question}
+Candidate Answer: {answer}
+
+Provide your evaluation now:
