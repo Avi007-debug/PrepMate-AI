@@ -6,7 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { InterviewProvider, useInterview } from "@/contexts/InterviewContext";
-import Index from "./pages/Index";
+import Home from "./pages/Home";
+import GetStarted from "./pages/GetStarted";
 import Interview from "./pages/Interview";
 import Summary from "./pages/Summary";
 import NotFound from "./pages/NotFound";
@@ -22,7 +23,8 @@ const AppContent = () => {
         <AppSidebar onRestart={restartInterview} />
         <main className="flex-1">
           <Routes>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<Home />} />
+            <Route path="/get-started" element={<GetStarted />} />
             <Route path="/interview" element={<Interview />} />
             <Route path="/summary" element={<Summary />} />
             <Route path="*" element={<NotFound />} />

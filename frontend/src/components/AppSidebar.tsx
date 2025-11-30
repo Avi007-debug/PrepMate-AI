@@ -1,5 +1,8 @@
-import { Brain, BarChart3, RotateCcw, Home, Info } from "lucide-react";
+import { Brain, BarChart3, RotateCcw, Home, Info, Play } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
+import { useInterview } from "@/contexts/InterviewContext";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import {
   Sidebar,
   SidebarContent,
@@ -22,6 +25,32 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ onRestart, showSummary, onShowSummary }: AppSidebarProps) {
+  const { sessionId, interviewCompleted } = useInterview();
+  const navigate = useNavigate();
+
+  const handleInterviewClick = (e: React.MouseEvent) => {
+    if (!sessionId) {
+      e.preventDefault();
+      toast.info("Please start an interview first", {
+        description: "Go to Get Started to begin a new interview session",
+      });
+    }
+  };
+
+  const handleSummaryClick = (e: React.MouseEvent) => {
+    if (!sessionId) {
+      e.preventDefault();
+      toast.info("No interview in progress", {
+        description: "Complete an interview to view your summary",
+      });
+    } else if (!interviewCompleted) {
+      e.preventDefault();
+      toast.info("Interview in progress", {
+        description: "Complete all questions to view your summary report",
+      });
+    }
+  };
+
   return (
     <Sidebar className="border-r">
       <SidebarHeader className="border-b p-6">
@@ -30,7 +59,7 @@ export function AppSidebar({ onRestart, showSummary, onShowSummary }: AppSidebar
             <Brain className="h-6 w-6 text-primary-foreground" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-foreground">AI Interview Prep</h2>
+            <h2 className="text-lg font-bold text-foreground">PrepMate AI</h2>
             <p className="text-xs text-muted-foreground">Powered by LLMs</p>
           </div>
         </div>
@@ -58,9 +87,23 @@ export function AppSidebar({ onRestart, showSummary, onShowSummary }: AppSidebar
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
                   <NavLink
+                    to="/get-started"
+                    className="hover:bg-accent"
+                    activeClassName="bg-accent text-accent-foreground font-medium"
+                  >
+                    <Play className="h-4 w-4" />
+                    <span>Start Interview</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
                     to="/interview"
                     className="hover:bg-accent"
                     activeClassName="bg-accent text-accent-foreground font-medium"
+                    onClick={handleInterviewClick}
                   >
                     <Brain className="h-4 w-4" />
                     <span>Interview</span>
@@ -74,6 +117,7 @@ export function AppSidebar({ onRestart, showSummary, onShowSummary }: AppSidebar
                     to="/summary"
                     className="hover:bg-accent"
                     activeClassName="bg-accent text-accent-foreground font-medium"
+                    onClick={handleSummaryClick}
                   >
                     <BarChart3 className="h-4 w-4" />
                     <span>Summary</span>
@@ -103,7 +147,7 @@ export function AppSidebar({ onRestart, showSummary, onShowSummary }: AppSidebar
 
       <SidebarFooter className="border-t p-4">
         <div className="space-y-2">
-          {onRestart && (
+          {onRestart && sessionId && (
             <Button
               onClick={onRestart}
               variant="outline"
@@ -122,7 +166,7 @@ export function AppSidebar({ onRestart, showSummary, onShowSummary }: AppSidebar
             asChild
           >
             <a
-              href="https://github.com/lovable"
+              href="https://github.com/Avi007-debug/PrepMate-AI"
               target="_blank"
               rel="noopener noreferrer"
             >

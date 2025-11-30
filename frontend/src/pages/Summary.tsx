@@ -3,24 +3,22 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useInterview } from "@/contexts/InterviewContext";
-import { Trophy, TrendingUp, TrendingDown, FileText, RotateCcw, Home } from "lucide-react";
+import { Trophy, TrendingUp, TrendingDown, FileText, RotateCcw, Home, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 
 const Summary = () => {
   const navigate = useNavigate();
-  const { summary, answers, loadSummary, restartInterview, loading, error } = useInterview();
+  const { summary, sessionId, loadSummary, restartInterview, loading, error } = useInterview();
 
   useEffect(() => {
-    if (!summary) {
+    if (sessionId && !summary) {
       loadSummary();
-    }
-  }, [summary, loadSummary]);
-
-  useEffect(() => {
-    if (!summary && !loading) {
+    } else if (!sessionId && !loading) {
+      // No session ID, redirect to home
       navigate("/");
     }
-  }, [summary, loading, navigate]);
+  }, [sessionId, summary, loadSummary, loading, navigate]);
 
   if (loading) {
     return (
@@ -56,9 +54,28 @@ const Summary = () => {
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 8) return "text-success";
-    if (score >= 6) return "text-warning";
-    return "text-destructive";
+    if (score >= 8) return "text-green-600";
+    if (score >= 6) return "text-yellow-600";
+    return "text-red-600";
+  };
+
+  const getScoreBgColor = (score: number) => {
+    if (score >= 8) return "bg-green-100";
+    if (score >= 6) return "bg-yellow-100";
+    return "bg-red-100";
+  };
+
+  const getScoreIcon = (score: number) => {
+    if (score >= 8) return <CheckCircle2 className="h-5 w-5 text-green-600" />;
+    if (score >= 6) return <AlertCircle className="h-5 w-5 text-yellow-600" />;
+    return <XCircle className="h-5 w-5 text-red-600" />;
+  };
+
+  const getPerformanceLabel = (score: number) => {
+    if (score >= 8) return "Excellent";
+    if (score >= 6) return "Good";
+    if (score >= 4) return "Fair";
+    return "Needs Improvement";
   };
 
   // PLACEHOLDER: PDF download functionality to be implemented with backend
@@ -86,7 +103,7 @@ const Summary = () => {
           </div>
 
           {/* Summary Cards Grid */}
-          <div className="grid gap-6 md:grid-cols-2 animate-in fade-in-50 duration-700 delay-100">
+          <div className="grid gap-6 md:grid-cols-3 animate-in fade-in-50 duration-700 delay-100">
             {/* Total Questions */}
             <Card className="border-2 shadow-md">
               <CardHeader>
@@ -100,7 +117,7 @@ const Summary = () => {
                   {summary.totalQuestions}
                 </p>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Questions completed
+                  Questions answered
                 </p>
               </CardContent>
             </Card>
@@ -110,72 +127,130 @@ const Summary = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Trophy className="h-5 w-5 text-primary" />
-                  Overall Score
+                  Average Score
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className={`text-4xl font-bold ${getScoreColor(summary.averageScore)}`}>
-                  {summary.averageScore}/10
-                </p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Average across all questions
-                </p>
+                <div className="flex items-center gap-3">
+                  <p className={`text-4xl font-bold ${getScoreColor(summary.averageScore)}`}>
+                    {summary.averageScore.toFixed(1)}
+                  </p>
+                  <div className="flex flex-col">
+                    <span className="text-sm text-muted-foreground">/10</span>
+                    <Badge variant="secondary" className="text-xs">
+                      {getPerformanceLabel(summary.averageScore)}
+                    </Badge>
+                  </div>
+                </div>
+                <Progress 
+                  value={summary.averageScore * 10} 
+                  className="mt-3 h-2"
+                />
               </CardContent>
             </Card>
 
-            {/* Overall Feedback */}
-            <Card className="border-2 shadow-md md:col-span-2">
+            {/* Performance Badge */}
+            <Card className="border-2 shadow-md">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <FileText className="h-5 w-5 text-primary" />
-                  Overall Feedback
+                  {getScoreIcon(summary.averageScore)}
+                  Performance
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                  {summary.overallFeedback}
+                <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 ${getScoreBgColor(summary.averageScore)}`}>
+                  <span className={`text-2xl font-bold ${getScoreColor(summary.averageScore)}`}>
+                    {getPerformanceLabel(summary.averageScore)}
+                  </span>
+                </div>
+                <p className="mt-3 text-sm text-muted-foreground">
+                  {summary.averageScore >= 8 ? "Outstanding performance!" : 
+                   summary.averageScore >= 6 ? "Keep up the good work!" : 
+                   "Room for improvement"}
                 </p>
               </CardContent>
             </Card>
           </div>
 
+          {/* Overall Feedback */}
+          <Card className="border-2 shadow-md animate-in fade-in-50 duration-700 delay-150">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <FileText className="h-6 w-6 text-primary" />
+                Overall Performance Assessment
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="prose prose-sm max-w-none">
+                <p className="text-foreground whitespace-pre-wrap leading-relaxed">
+                  {summary.overallFeedback}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Individual Question Scores */}
           <Card className="border-2 shadow-md animate-in fade-in-50 duration-700 delay-200">
             <CardHeader>
-              <CardTitle>Question-by-Question Breakdown</CardTitle>
+              <CardTitle className="text-xl">Detailed Question Analysis</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {summary.questionsAndAnswers.map((qa, index) => {
                   const score = qa.score;
                   return (
                     <div
                       key={index}
-                      className="rounded-lg border p-4 space-y-3"
+                      className="rounded-lg border-2 p-5 space-y-4 hover:shadow-md transition-shadow"
                     >
-                      <div className="flex items-center justify-between">
+                      {/* Question Header */}
+                      <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-sm font-medium text-muted-foreground">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="outline" className="text-xs">
                               Question {index + 1}
-                            </span>
+                            </Badge>
+                            {getScoreIcon(score)}
                           </div>
-                          <p className="text-sm text-foreground">
+                          <p className="text-base font-medium text-foreground leading-relaxed">
                             {qa.question}
                           </p>
                         </div>
-                        <div className="ml-4 flex items-center gap-2">
-                          <span className={`text-2xl font-bold ${getScoreColor(score)}`}>
-                            {score}
-                          </span>
-                          <span className="text-sm text-muted-foreground">/10</span>
+                        <div className="flex flex-col items-end gap-1 min-w-[80px]">
+                          <div className="flex items-baseline gap-1">
+                            <span className={`text-3xl font-bold ${getScoreColor(score)}`}>
+                              {score}
+                            </span>
+                            <span className="text-sm text-muted-foreground">/10</span>
+                          </div>
+                          <Progress value={score * 10} className="h-1.5 w-16" />
                         </div>
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        <strong>Your Answer:</strong> {qa.answer.substring(0, 100)}...
+
+                      {/* Your Answer */}
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          Your Answer
+                        </h4>
+                        <div className="bg-accent/50 rounded-md p-3">
+                          <p className="text-sm text-foreground leading-relaxed">
+                            {qa.answer}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        <strong>Feedback:</strong> {qa.feedback}
+
+                      {/* AI Feedback */}
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4 text-primary" />
+                          AI Feedback & Analysis
+                        </h4>
+                        <div className="bg-primary/5 rounded-md p-3 border border-primary/10">
+                          <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                            {qa.feedback}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   );
