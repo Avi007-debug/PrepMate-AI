@@ -8,13 +8,43 @@ import { Badge } from "@/components/ui/badge";
 
 const Summary = () => {
   const navigate = useNavigate();
-  const { summary, answers, questions, restartInterview } = useInterview();
+  const { summary, answers, loadSummary, restartInterview, loading, error } = useInterview();
 
   useEffect(() => {
     if (!summary) {
+      loadSummary();
+    }
+  }, [summary, loadSummary]);
+
+  useEffect(() => {
+    if (!summary && !loading) {
       navigate("/");
     }
-  }, [summary, navigate]);
+  }, [summary, loading, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-lg text-muted-foreground">Loading summary...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-lg text-red-500 mb-4">{error}</p>
+          <Button onClick={() => navigate("/")}>
+            Go to Home
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (!summary) {
     return null;
@@ -93,46 +123,17 @@ const Summary = () => {
               </CardContent>
             </Card>
 
-            {/* Strongest Areas */}
-            <Card className="border-2 shadow-md">
+            {/* Overall Feedback */}
+            <Card className="border-2 shadow-md md:col-span-2">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <TrendingUp className="h-5 w-5 text-success" />
-                  Strongest Areas
+                  <FileText className="h-5 w-5 text-primary" />
+                  Overall Feedback
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {summary.strongestAreas.map((area, index) => (
-                    <Badge key={index} variant="secondary" className="bg-success-light text-success">
-                      {area}
-                    </Badge>
-                  ))}
-                </div>
-                <p className="mt-3 text-sm text-muted-foreground">
-                  Keep up the excellent work in these areas!
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Weakest Topics */}
-            <Card className="border-2 shadow-md">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <TrendingDown className="h-5 w-5 text-warning" />
-                  Areas to Improve
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {summary.weakestTopics.map((topic, index) => (
-                    <Badge key={index} variant="secondary" className="bg-warning-light text-warning">
-                      {topic}
-                    </Badge>
-                  ))}
-                </div>
-                <p className="mt-3 text-sm text-muted-foreground">
-                  Focus your study on these topics for better results
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {summary.overallFeedback}
                 </p>
               </CardContent>
             </Card>
@@ -145,32 +146,36 @@ const Summary = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {answers.map((answer, index) => {
-                  const question = questions.find((q) => q.id === answer.questionId);
-                  const score = answer.feedback?.score || 0;
+                {summary.questionsAndAnswers.map((qa, index) => {
+                  const score = qa.score;
                   return (
                     <div
-                      key={answer.questionId}
-                      className="flex items-center justify-between rounded-lg border p-4"
+                      key={index}
+                      className="rounded-lg border p-4 space-y-3"
                     >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-medium text-muted-foreground">
-                            Question {index + 1}
-                          </span>
-                          <Badge variant="outline" className="text-xs">
-                            {question?.category}
-                          </Badge>
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-sm font-medium text-muted-foreground">
+                              Question {index + 1}
+                            </span>
+                          </div>
+                          <p className="text-sm text-foreground">
+                            {qa.question}
+                          </p>
                         </div>
-                        <p className="text-sm text-foreground line-clamp-1">
-                          {question?.text}
-                        </p>
+                        <div className="ml-4 flex items-center gap-2">
+                          <span className={`text-2xl font-bold ${getScoreColor(score)}`}>
+                            {score}
+                          </span>
+                          <span className="text-sm text-muted-foreground">/10</span>
+                        </div>
                       </div>
-                      <div className="ml-4 flex items-center gap-2">
-                        <span className={`text-2xl font-bold ${getScoreColor(score)}`}>
-                          {score}
-                        </span>
-                        <span className="text-sm text-muted-foreground">/10</span>
+                      <div className="text-xs text-muted-foreground">
+                        <strong>Your Answer:</strong> {qa.answer.substring(0, 100)}...
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        <strong>Feedback:</strong> {qa.feedback}
                       </div>
                     </div>
                   );

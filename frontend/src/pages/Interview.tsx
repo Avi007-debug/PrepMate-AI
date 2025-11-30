@@ -13,10 +13,13 @@ const Interview = () => {
   const {
     questions,
     currentQuestionIndex,
+    currentQuestion,
     currentAnswer,
     showFeedback,
     answers,
     interviewCompleted,
+    loading,
+    error,
     setCurrentAnswer,
     submitAnswer,
     nextQuestion,
@@ -36,14 +39,12 @@ const Interview = () => {
     }
   }, [interviewCompleted, navigate]);
 
-  if (questions.length === 0) {
+  if (questions.length === 0 || !currentQuestion) {
     return null;
   }
 
-  const currentQuestion = questions[currentQuestionIndex];
   const currentFeedback = answers.find((a) => a.questionId === currentQuestion.id)?.feedback;
   const charCount = currentAnswer.length;
-  const isLastQuestion = currentQuestionIndex === questions.length - 1;
 
   return (
     <div className="min-h-screen bg-background">
@@ -78,14 +79,19 @@ const Interview = () => {
                 </div>
               </div>
 
+              {error && (
+                <div className="text-red-500 text-sm">
+                  {error}
+                </div>
+              )}
               <Button
                 onClick={submitAnswer}
-                disabled={currentAnswer.trim().length < 10}
+                disabled={currentAnswer.trim().length < 10 || loading}
                 className="w-full h-12 text-base font-semibold shadow-md hover:shadow-lg transition-all"
                 size="lg"
               >
                 <Send className="mr-2 h-5 w-5" />
-                Submit Answer
+                {loading ? "Submitting..." : "Submit Answer"}
               </Button>
             </div>
           )}
@@ -97,10 +103,11 @@ const Interview = () => {
               
               <Button
                 onClick={nextQuestion}
+                disabled={loading}
                 className="w-full h-12 text-base font-semibold shadow-md hover:shadow-lg transition-all"
                 size="lg"
               >
-                {isLastQuestion ? "View Summary Report" : "Next Question"}
+                {interviewCompleted ? "View Summary Report" : "Next Question"}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </div>

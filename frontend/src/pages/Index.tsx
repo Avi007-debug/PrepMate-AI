@@ -9,12 +9,14 @@ import { useInterview } from "@/contexts/InterviewContext";
 const Index = () => {
   const [roleInput, setRoleInput] = useState("");
   const navigate = useNavigate();
-  const { generateQuestions } = useInterview();
+  const { startInterview, loading, error } = useInterview();
 
   const handleStartInterview = async () => {
     if (roleInput.trim()) {
-      await generateQuestions(roleInput);
-      navigate("/interview");
+      await startInterview(roleInput);
+      if (!error) {
+        navigate("/interview");
+      }
     }
   };
 
@@ -76,15 +78,21 @@ const Index = () => {
                   onChange={(e) => setRoleInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleStartInterview()}
                   className="h-14 text-lg"
+                  disabled={loading}
                 />
               </div>
+              {error && (
+                <div className="text-red-500 text-sm">
+                  {error}
+                </div>
+              )}
               <Button
                 onClick={handleStartInterview}
-                disabled={!roleInput.trim()}
+                disabled={!roleInput.trim() || loading}
                 className="h-14 w-full text-lg font-semibold shadow-md hover:shadow-lg transition-all"
                 size="lg"
               >
-                Start Interview
+                {loading ? "Starting Interview..." : "Start Interview"}
               </Button>
             </CardContent>
           </Card>

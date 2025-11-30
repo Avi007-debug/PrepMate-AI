@@ -1,34 +1,45 @@
 import { useState } from "react";
+import { apiClient } from "@/lib/api";
 
 export interface Question {
-  id: string;
+  id: number;
   text: string;
   category: string;
+  difficulty?: string;
+  topic_tags?: string[];
+  ideal_answer_brief?: string;
 }
 
 export interface Answer {
-  questionId: string;
+  questionId: number;
   text: string;
   feedback?: Feedback;
 }
 
 export interface Feedback {
-  verdict: "correct" | "partial" | "needs-improvement";
+  feedback: string;
   score: number;
-  strengths: string[];
-  weaknesses: string[];
-  suggestions: string[];
+  verdict?: "correct" | "partial" | "needs-improvement";
+  strengths?: string[];
+  weaknesses?: string[];
+  suggestions?: string[];
 }
 
 export interface InterviewSummary {
   totalQuestions: number;
   averageScore: number;
-  weakestTopics: string[];
-  strongestAreas: string[];
+  questionsAndAnswers: Array<{
+    question: string;
+    answer: string;
+    score: number;
+    feedback: string;
+  }>;
+  overallFeedback: string;
 }
 
 export const useInterviewState = () => {
   const [role, setRole] = useState<string>("");
+  const [sessionId, setSessionId] = useState<string>("");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
   const [answers, setAnswers] = useState<Answer[]>([]);
@@ -36,77 +47,88 @@ export const useInterviewState = () => {
   const [showFeedback, setShowFeedback] = useState<boolean>(false);
   const [interviewCompleted, setInterviewCompleted] = useState<boolean>(false);
   const [summary, setSummary] = useState<InterviewSummary | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // PLACEHOLDER: This will be replaced with actual LangChain/AI backend logic
-  const generateQuestions = async (targetRole: string) => {
-    // Simulated questions for demo purposes
-    const mockQuestions: Question[] = [
-      {
-        id: "q1",
-        text: `Explain the concept of Big O notation and analyze the time complexity of a binary search algorithm.`,
-        category: "Algorithms",
-      },
-      {
-        id: "q2",
-        text: `Design a scalable system for handling millions of concurrent requests. What components would you use?`,
-        category: "System Design",
-      },
-      {
-        id: "q3",
-        text: `What is the difference between SQL and NoSQL databases? When would you use each?`,
-        category: "Databases",
-      },
-      {
-        id: "q4",
-        text: `Describe how you would implement a rate limiter for an API.`,
-        category: "System Design",
-      },
-      {
-        id: "q5",
-        text: `Explain the concept of closures in JavaScript with an example.`,
-        category: "Programming",
-      },
-    ];
-    
-    setQuestions(mockQuestions);
-    setRole(targetRole);
+  const startInterview = async (targetRole: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await apiClient.startInterview({
+        role: targetRole,
+        difficulty: "medium",
+        topics: ["algorithms", "system-design", "programming"]
+      });
+      
+      setSessionId(response.session_id);
+      
+      // Parse the JSON string in the question field
+      const questionData = JSON.parse(response.question);
+      const allQuestions = questionData.questions.map((q: any, index: number) => ({
+        id: index,
+        text: q.question,
+        category: q.category,
+        difficulty: q.difficulty,
+        topic_tags: q.topic_tags,
+        ideal_answer_brief: q.ideal_answer_brief
+      }));
+      
+      setQuestions(allQuestions);
+      setCurrentQuestionIndex(0);
+      setRole(targetRole);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to start interview");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // PLACEHOLDER: This will be replaced with actual LangChain/AI evaluation logic
-  const evaluateAnswer = async (question: Question, answerText: string): Promise<Feedback> => {
-    // Simulated evaluation for demo purposes
-    const mockFeedback: Feedback = {
-      verdict: Math.random() > 0.3 ? "correct" : Math.random() > 0.5 ? "partial" : "needs-improvement",
-      score: Math.floor(Math.random() * 4) + 7, // Random score between 7-10
-      strengths: [
-        "Good explanation of core concepts",
-        "Provided relevant examples",
-      ],
-      weaknesses: [
-        "Could elaborate more on edge cases",
-        "Missing discussion of trade-offs",
-      ],
-      suggestions: [
-        "Consider discussing time-space complexity trade-offs",
-        "Add concrete examples from real-world scenarios",
-      ],
-    };
-    
-    return mockFeedback;
-  };
+
 
   const submitAnswer = async () => {
     const currentQuestion = questions[currentQuestionIndex];
-    const feedback = await evaluateAnswer(currentQuestion, currentAnswer);
+    if (!currentQuestion || !sessionId) return;
     
-    const newAnswer: Answer = {
-      questionId: currentQuestion.id,
-      text: currentAnswer,
-      feedback,
-    };
-    
-    setAnswers([...answers, newAnswer]);
-    setShowFeedback(true);
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await apiClient.submitAnswer({
+        session_id: sessionId,
+        question_id: currentQuestion.id,
+        answer: currentAnswer
+      });
+      
+      const feedback: Feedback = {
+        feedback: response.feedback,
+        score: response.score
+      };
+      
+      const newAnswer: Answer = {
+        questionId: currentQuestion.id,
+        text: currentAnswer,
+        feedback,
+      };
+      
+      setAnswers([...answers, newAnswer]);
+      setShowFeedback(true);
+      
+      if (response.is_complete) {
+        setInterviewCompleted(true);
+      } else if (response.next_question && response.next_question_id) {
+        const nextQuestion: Question = {
+          id: response.next_question_id,
+          text: response.next_question,
+          category: "Interview Question"
+        };
+        setQuestions([...questions, nextQuestion]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to submit answer");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const nextQuestion = () => {
@@ -114,35 +136,36 @@ export const useInterviewState = () => {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setCurrentAnswer("");
       setShowFeedback(false);
-    } else {
-      // Complete interview and generate summary
-      completeInterview();
     }
   };
 
-  // PLACEHOLDER: This will be replaced with actual summary generation logic
-  const completeInterview = () => {
-    const allScores = answers
-      .map((a) => a.feedback?.score || 0)
-      .filter((score) => score > 0);
+  const loadSummary = async () => {
+    if (!sessionId) return;
     
-    const avgScore = allScores.length > 0 
-      ? allScores.reduce((a, b) => a + b, 0) / allScores.length 
-      : 0;
-
-    const mockSummary: InterviewSummary = {
-      totalQuestions: questions.length,
-      averageScore: Math.round(avgScore * 10) / 10,
-      weakestTopics: ["System Design", "Databases"],
-      strongestAreas: ["Algorithms", "Programming"],
-    };
-
-    setSummary(mockSummary);
-    setInterviewCompleted(true);
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await apiClient.getSummary(sessionId);
+      
+      const summaryData: InterviewSummary = {
+        totalQuestions: response.total_questions,
+        averageScore: response.average_score,
+        questionsAndAnswers: response.questions_and_answers,
+        overallFeedback: response.overall_feedback
+      };
+      
+      setSummary(summaryData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load summary");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const restartInterview = () => {
     setRole("");
+    setSessionId("");
     setQuestions([]);
     setCurrentQuestionIndex(0);
     setAnswers([]);
@@ -150,22 +173,28 @@ export const useInterviewState = () => {
     setShowFeedback(false);
     setInterviewCompleted(false);
     setSummary(null);
+    setError(null);
   };
 
   return {
     role,
+    sessionId,
     questions,
     currentQuestionIndex,
+    currentQuestion: questions[currentQuestionIndex] || null,
     answers,
     currentAnswer,
     showFeedback,
     interviewCompleted,
     summary,
+    loading,
+    error,
     setRole,
     setCurrentAnswer,
-    generateQuestions,
+    startInterview,
     submitAnswer,
     nextQuestion,
+    loadSummary,
     restartInterview,
   };
 };
